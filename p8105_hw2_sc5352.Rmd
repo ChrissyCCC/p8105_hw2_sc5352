@@ -10,12 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ### Problem 1  
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 ```
 
 #### clean the data in pols-month.csv
-```{r}
+```{r, message=FALSE}
 pols_month = 
   read_csv("data/pols-month.csv") |>
   separate(mon, into = c("year", "month", "day"), sep = "-") |>
@@ -26,11 +26,11 @@ pols_month =
     month = month.abb[month],
     president = ifelse(prez_gop == 1, "gop", "dem")
     ) |>
-  select(-prez_gop, -prez_dem, -day)
+  select(year, month, everything(), -prez_gop, -prez_dem, -day)
 ```
 
 #### clean the data in snp.csv 
-```{r}
+```{r, message=FALSE}
 snp = 
   read_csv("data/snp.csv") |>
   separate(date, c("month", "day", "year"), "/") |>
@@ -38,74 +38,108 @@ snp =
     month = as.integer(month),
     month = month.abb[month],
     year = as.integer(year),
+    year = if_else(year > 2023, year - 100, year),
     day = as.integer(day)
   ) |>
   select(year, month, everything())
 ```
 
 #### tidy the unemployment data
-```{r}
+```{r, message=FALSE}
 unemployment = 
-  read_csv("data/unemployment.csv")
+  read_csv("data/unemployment.csv") |>
+  rename(year = Year) |>
+  pivot_longer(
+    Jan:Dec, 
+    names_to = "month",
+    values_to = "unemployment"
+  ) |>
+  select(year, month, unemployment)
 ```
+```{r, message=FALSE}
+data_538 = 
+  left_join(pols_month, snp) |>
+  left_join(x = _, y = unemployment)
+```
+
 
 ### Problem 2
 
-```{r, echo=FALSE}
+```{r, message=FALSE}
 library(dbplyr)
 library(readxl)
 library(tidyverse)
 ```
 
-```{r}
+```{r, message=FALSE}
 Mr_Trash_Wheel = 
   read_excel("Trash Wheel.xlsx", sheet = "Mr. Trash Wheel") |>
   janitor::clean_names() |> 
-  select(-x15,-x16) |>
+  separate(date, into = c("year", "mon", "day"), sep = "-") |>
   mutate(
     homes_powered = (weight_tons*500)/30,
     type = "Mr_Trash_Wheel"
-  )
+  ) |>
+  drop_na(dumpster)|>
+  select(-mon,-x15,-x16) 
 
 Prof_Trash_Wheel = 
   read_excel("Trash Wheel.xlsx", sheet = "Professor Trash Wheel") |>
   janitor::clean_names() |>
+  separate(date, into = c("year", "mon", "day"), sep = "-") |>
   mutate(
     homes_powered = (weight_tons*500)/30,
     type = "Prof_Trash_Wheel",
     year = as.character(year), 
     month = as.character(month)
-  )
+  )|>
+  drop_na(dumpster)|>
+  select(-mon)
 
 Gwynnda = 
   read_excel("Trash Wheel.xlsx", sheet = "Gwynnda Trash Wheel") |>
   janitor::clean_names() |>
+  separate(date, into = c("year", "mon", "day"), sep = "-") |>
   mutate(
     homes_powered = (weight_tons*500)/30,
     type = "Gwynnda",
     year = as.character(year), 
     month = as.character(month)
-  )
-Gwynnda = Gwynnda[-107,]
+  ) |>
+  drop_na(dumpster)|>
+  select(-mon)
+#Gwynnda = Gwynnda[-107,]
 
-combine_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel)
-all_data = bind_rows(combine_data, Gwynnda)
+#combine_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel)
+all_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel,Gwynnda)
 ```
 
-The dataset `Mr_Trash_Wheel` has `r nrow(Mr_Trash_Wheel)` observations and `r ncol(Mr_Trash_Wheel)` variables. The `homes_powered` column has been added based on the calculations.  
-The dataset `Prof_Trash_Wheel` has `r nrow(Prof_Trash_Wheel)` observations and `r ncol(Prof_Trash_Wheel)` variables. The total weight of trash collected by Professor Trash Wheel is `r sum(Prof_Trash_Wheel$weight_tons)`.  
+The dataset `Mr_Trash_Wheel` has `r nrow(Mr_Trash_Wheel)` observations and `r ncol(Mr_Trash_Wheel)` variables. The `homes_powered` column has been added based on the calculations. Below shows a part of the dataset `Mr_Trash_Wheel` Variables are `r names(Mr_Trash_Wheel)`
+
+```{r}
+head(Mr_Trash_Wheel)
+```
+
+The dataset `Prof_Trash_Wheel` has `r nrow(Prof_Trash_Wheel)` observations and `r ncol(Prof_Trash_Wheel)` variables. The total weight of trash collected by Professor Trash Wheel is `r sum(Prof_Trash_Wheel$weight_tons)`. 
 The dataset `Gwynnda` has `r nrow(Gwynnda)` observations and `r ncol(Gwynnda)` variables. The total number of cigarette butts collected by Gwynnda in July of 2021 `r sum(filter(Gwynnda, month == "July", year == "2021")$cigarette_butts)`. 
 The combined dataset `all_data` has `r nrow(all_data)` observations and `r ncol(all_data)` variables.
 
 ### Problem 3
-```{r}
+```{r, message=FALSE}
 baseline = 
   read_csv("data_mci/MCI_baseline.csv", skip = 1) |>
   janitor::clean_names() |>
   mutate(
     sex = ifelse(sex == 1, "male", "female"),
     apoe4 = ifelse(apoe4 == 1, "carrier", "noncarrier"))
-  #filter(age_at_onset != '.')
+
+baseline_mci = 
+  read_csv("data_mci/MCI_baseline.csv", skip = 1) |>
+  janitor::clean_names() |>
+  mutate(
+    sex = ifelse(sex == 1, "male", "female"),
+    apoe4 = ifelse(apoe4 == 1, "carrier", "noncarrier"))|>
+  filter(current_age < age_at_onset , age_at_onset !='.')
   
 amyloid = 
   read_csv("data_mci/mci_amyloid.csv", skip = 1) |>
@@ -114,11 +148,14 @@ amyloid =
 
 total_data = inner_join(baseline, amyloid, by="id")
 
-write_csv(total_data, "~/Desktop/p8105_hw2_sc5352/data_mci.csv")
+write_csv(total_data, "~/Desktop/p8105_hw2_sc5352/data_mci/data_mci.csv")
 ```
 
 When importing the `baseline` and `amyloid` datasets, I deleted the first line so that the second line became the headers. Also, `sex` and `apoe4` variables have been recoded based on the instructions. 
-In the dataset `baseline`, I only keep participants who have `age_at_onset`, which means they meet the stated inclusion criteria.  
-There are `r nrow(baseline)` participants, and `r nrow(filter(baseline, age_at_onset !='.'))` of those develop MCI. The average baseline age is `r mean(baseline$current_age)`. `r nrow(filter(baseline, sex == "female", apoe4 == "carrier")) / nrow(filter(baseline, sex == "female")) *100`% of women in the study are carriers.  
+
+`amyloid` datasets has `r nrow(amyloid)` participants and `r ncol(amyloid)` variables.  
+In the dataset `baseline_mci`, I only keep participants who have `age_at_onset`, which means they meet the stated inclusion criteria.  
+
+There are `r nrow(baseline)` participants, and `r nrow(baseline_mci)` of those develop MCI. The average baseline age is `r mean(baseline_mci$current_age)`. `r nrow(filter(baseline_mci, sex == "female", apoe4 == "carrier")) / nrow(filter(baseline_mci, sex == "female")) *100`% of women in the study are carriers.  
 
 Some participants appear in only one dataset. After merging two datasets, there are `r nrow(total_data)` participants remaining.
