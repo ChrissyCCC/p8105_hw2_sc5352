@@ -109,18 +109,19 @@ Gwynnda =
   drop_na(dumpster)|>
   select(-mon)
 
-#combine_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel)
 all_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel,Gwynnda)
 ```
 
-The dataset `Mr_Trash_Wheel` has `r nrow(Mr_Trash_Wheel)` observations and `r ncol(Mr_Trash_Wheel)` variables. The `homes_powered` column has been added based on the calculations. Below shows a part of the dataset `Mr_Trash_Wheel` Variables are `r names(Mr_Trash_Wheel)`
+The dataset `Mr_Trash_Wheel` has `r nrow(Mr_Trash_Wheel)` observations and `r ncol(Mr_Trash_Wheel)` variables. The `homes_powered` column has been added based on the calculations. Below shows a part of the dataset `Mr_Trash_Wheel`. Variables are `r names(Mr_Trash_Wheel)`
 
 ```{r}
 head(Mr_Trash_Wheel)
 ```
 
-The dataset `Prof_Trash_Wheel` has `r nrow(Prof_Trash_Wheel)` observations and `r ncol(Prof_Trash_Wheel)` variables. The total weight of trash collected by Professor Trash Wheel is `r sum(Prof_Trash_Wheel$weight_tons)`. 
-The dataset `Gwynnda` has `r nrow(Gwynnda)` observations and `r ncol(Gwynnda)` variables. The total number of cigarette butts collected by Gwynnda in July of 2021 `r sum(filter(Gwynnda, month == "July", year == "2021")$cigarette_butts)`. 
+The dataset `Prof_Trash_Wheel` has `r nrow(Prof_Trash_Wheel)` observations and `r ncol(Prof_Trash_Wheel)` variables. The total weight of trash collected by Professor Trash Wheel is `r sum(Prof_Trash_Wheel$weight_tons)`.  
+
+The dataset `Gwynnda` has `r nrow(Gwynnda)` observations and `r ncol(Gwynnda)` variables. The total number of cigarette butts collected by Gwynnda in July of 2021 `r sum(filter(Gwynnda, month == "July", year == "2021")$cigarette_butts)`.  
+
 The combined dataset `all_data` has `r nrow(all_data)` observations and `r ncol(all_data)` variables.
 
 ### Problem 3
@@ -148,7 +149,9 @@ When importing the `baseline` and `amyloid` datasets, I deleted the first line s
 
 In the dataset `baseline_mci`, I removed participants who did not meet the stated inclusion criteria: changing "." into NA and filter out the target rows with conditions that current age is less than age_at_onset or the age_at_onset is NA.  
 
-There are `r nrow(baseline)` participants, and `r nrow(baseline_mci)` of those develop MCI. The average baseline age is `r mean(baseline_mci$current_age)`. `r nrow(filter(baseline_mci, sex == "female", apoe4 == "carrier")) / nrow(filter(baseline_mci, sex == "female")) *100`% of women in the study are carriers.  
+There are `r nrow(baseline)` participants, and `r nrow(baseline_mci)` of those develop MCI. The average baseline age is `r mean(baseline_mci$current_age)`.   
+
+`r nrow(filter(baseline_mci, sex == "female", apoe4 == "carrier")) / nrow(filter(baseline_mci, sex == "female")) *100`% of women in the study are carriers.  
 
 ```{r}
 amyloid = 
@@ -181,5 +184,7 @@ write_csv(total_data, "~/Desktop/p8105_hw2_sc5352/data_mci/data_mci.csv")
 ```
 
 After merging two datasets, there are `r nrow(total_data)` rows. Each row shows id, current age, sex, education, apoe4, and the value of mci during different time period.
+
+Finally, I save the dataset by using `write_csv` and save it to the data_mci file.
 
 
