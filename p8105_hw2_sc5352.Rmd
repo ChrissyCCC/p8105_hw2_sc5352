@@ -108,7 +108,6 @@ Gwynnda =
   ) |>
   drop_na(dumpster)|>
   select(-mon)
-#Gwynnda = Gwynnda[-107,]
 
 #combine_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel)
 all_data = bind_rows(Mr_Trash_Wheel,Prof_Trash_Wheel,Gwynnda)
@@ -138,24 +137,49 @@ baseline_mci =
   janitor::clean_names() |>
   mutate(
     sex = ifelse(sex == 1, "male", "female"),
-    apoe4 = ifelse(apoe4 == 1, "carrier", "noncarrier"))|>
-  filter(current_age < age_at_onset , age_at_onset !='.')
-  
-amyloid = 
-  read_csv("data_mci/mci_amyloid.csv", skip = 1) |>
-  janitor::clean_names() |>
-  rename(id = study_id)
+    apoe4 = ifelse(apoe4 == 1, "carrier", "noncarrier"),
+    age_at_onset = ifelse(age_at_onset == ".", NA, age_at_onset)
+    ) |>
+  filter(current_age < age_at_onset | is.na(age_at_onset))
 
-total_data = inner_join(baseline, amyloid, by="id")
-
-write_csv(total_data, "~/Desktop/p8105_hw2_sc5352/data_mci/data_mci.csv")
 ```
 
 When importing the `baseline` and `amyloid` datasets, I deleted the first line so that the second line became the headers. Also, `sex` and `apoe4` variables have been recoded based on the instructions. 
 
-`amyloid` datasets has `r nrow(amyloid)` participants and `r ncol(amyloid)` variables.  
-In the dataset `baseline_mci`, I only keep participants who have `age_at_onset`, which means they meet the stated inclusion criteria.  
+In the dataset `baseline_mci`, I removed participants who did not meet the stated inclusion criteria: changing "." into NA and filter out the target rows with conditions that current age is less than age_at_onset or the age_at_onset is NA.  
 
 There are `r nrow(baseline)` participants, and `r nrow(baseline_mci)` of those develop MCI. The average baseline age is `r mean(baseline_mci$current_age)`. `r nrow(filter(baseline_mci, sex == "female", apoe4 == "carrier")) / nrow(filter(baseline_mci, sex == "female")) *100`% of women in the study are carriers.  
 
-Some participants appear in only one dataset. After merging two datasets, there are `r nrow(total_data)` participants remaining.
+```{r}
+amyloid = 
+  read_csv("data_mci/mci_amyloid.csv", skip = 1) |>
+  janitor::clean_names() |>
+  rename(id = study_id) |>
+  pivot_longer(
+    baseline:time_8,
+    names_to = "year",
+    names_prefix = "time_",
+    values_to = "value"
+  ) |>
+  mutate(
+    year = replace(year, year == "baseline", "0"))
+```
+
+Read the file first and use pivot_longer so that I could do the `anti_join` and `inner_join` to compare and summarize the datasets. `amyloid` datasets has `r nrow(amyloid)` participants and `r ncol(amyloid)` variables.
+
+```{r}
+only_data<-anti_join(baseline_mci,amyloid)
+onlt_data_2<-anti_join(amyloid,baseline_mci)
+```
+
+After using `anti_join` function for both datasets, notice that `r nrow(only_data)`participants in the `baseline` are not included in `amyloid` while 2 participants in the `amyloid` are not included in the `baseline`.  
+
+```{r}
+total_data = inner_join(baseline_mci, amyloid, by="id")
+
+write_csv(total_data, "~/Desktop/p8105_hw2_sc5352/data_mci/data_mci.csv")
+```
+
+After merging two datasets, there are `r nrow(total_data)` rows. Each row shows id, current age, sex, education, apoe4, and the value of mci during different time period.
+
+
